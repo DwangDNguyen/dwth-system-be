@@ -19,12 +19,17 @@ import lombok.NoArgsConstructor;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    private String id;
+
     private String name;
+
     @Column(unique = true)
     private String email;
+
     private String password;
+
     private Roles role;
 
     public UserDTO toDTO() {

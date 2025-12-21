@@ -9,7 +9,7 @@ public interface UserService {
 
     public UserDTO loginUser(UserDTO userDTO) throws UserException;
 
-    public UserDTO getUserById(Long id) throws UserException;
+    public UserDTO getUserById(String id) throws UserException;
 
     public void updateUser(UserDTO userDTO) throws UserException;
 

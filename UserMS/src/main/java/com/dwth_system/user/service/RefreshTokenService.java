@@ -28,7 +28,7 @@ public class RefreshTokenService {
     private JwtUtils jwtUtils;
 
     @Transactional
-    public RefreshToken createRefreshToken(Long userId) throws UserException {
+    public RefreshToken createRefreshToken(String userId) throws UserException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException("USER_NOT_FOUND"));
 
@@ -57,7 +57,7 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void deleteByUserId(Long userId) throws UserException {
+    public void deleteByUserId(String userId) throws UserException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException("USER_NOT_FOUND"));
         refreshTokenRepository.deleteByUser(user);

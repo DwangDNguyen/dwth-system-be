@@ -15,15 +15,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserDTO {
 
-    private Long id;
+    private String id;
+
     @NotBlank(message = "Name is required")
     private String name;
+
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
+
     @NotBlank(message = "Password is required")
     @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d]{8,}$", message = "Password must be at least 8 characters long and include at least one uppercase letter, one digit.")
     private String password;
+
     private Roles role;
 
     public User toEntity() {
