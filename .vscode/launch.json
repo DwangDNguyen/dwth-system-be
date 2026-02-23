@@ -19,6 +19,16 @@
             "projectName": "GatewayMS",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-ProfileMsApplication<ProfileMS>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dwth_system.profile.ProfileMsApplication",
+            "projectName": "ProfileMS",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

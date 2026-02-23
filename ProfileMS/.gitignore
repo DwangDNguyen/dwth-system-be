@@ -31,3 +31,4 @@ build/
 
 ### VS Code ###
 .vscode/
+API_RESPONSE_FORMAT.md
