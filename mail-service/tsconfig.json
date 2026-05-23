@@ -1,0 +1,14 @@
+{
+    // Visit https://aka.ms/tsconfig to read more about this file
+    "compilerOptions": {
+        // File Layout
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "types": ["node"],
+        // Compiler Options
+        "module": "commonjs",
+        "target": "es6",
+        "strict": true,
+        "esModuleInterop": true
+    }
+}
