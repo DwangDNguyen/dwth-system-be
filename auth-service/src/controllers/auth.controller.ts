@@ -188,6 +188,10 @@ export const resetPassword = async (
             throw new ValidationError("Validation failed", {
                 newPassword: "New password is required",
             });
+        else if (newPassword.length < 8)
+            throw new ValidationError("Validation failed", {
+                newPassword: "Password must be at least 8 characters",
+            });
 
         await resetPasswordService(resetToken, newPassword);
 
