@@ -30,6 +30,24 @@ export const authenticate = (
     next: NextFunction,
 ): void => {
     try {
+        // 1) If gateway forwarded user info in headers, trust and attach
+        const forwardedUserId = req.headers["x-user-id"] as string | undefined;
+        const forwardedEmail = req.headers["x-user-email"] as
+            | string
+            | undefined;
+        const forwardedRole = req.headers["x-user-role"] as string | undefined;
+
+        if (forwardedUserId && forwardedEmail && forwardedRole) {
+            req.user = {
+                userId: forwardedUserId,
+                email: forwardedEmail,
+                role: forwardedRole,
+            };
+            next();
+            return;
+        }
+
+        // 2) Fallback: verify Authorization Bearer token (direct service call)
         const authHeader = req.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
