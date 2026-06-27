@@ -1,4 +1,5 @@
 import { createClient, RedisClientType } from "redis";
+import logger from "../utils/logger";
 
 let client: RedisClientType;
 const redisConnect = async () => {
@@ -11,11 +12,13 @@ const redisConnect = async () => {
         },
     });
 
-    client.on("error", (err) => console.log("Redis Client Error", err));
+    client.on("error", (err) =>
+        logger.error("Redis Client Error", { error: err }),
+    );
 
     await client.connect();
 
-    console.log("Auth service redis is connected successfully");
+    logger.info("Auth service redis is connected successfully");
 };
 
 const getRedisClient = () => {

@@ -2,16 +2,18 @@ import { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/base.error";
 import { ApiResponse } from "../types/response.types";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../constants/http-status";
+import logger from "../utils/logger";
 
 /**
  * Global Error Handler Middleware - Simplified
  */
 export const errorHandler = (
     err: Error | AppError,
-    _req: Request,
+    req: Request,
     res: Response,
     _next: NextFunction,
 ): void => {
+    const requestId = res.getHeader("x-request-id") as string | undefined;
     const statusCode =
         err instanceof AppError
             ? err.statusCode
@@ -24,7 +26,14 @@ export const errorHandler = (
               ? ERROR_MESSAGES.SERVER_ERROR
               : err.message || ERROR_MESSAGES.UNKNOWN;
 
-    if (!(err instanceof AppError)) console.error("Unexpected Error:", err);
+    logger.error("Request error", {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode,
+        message: err.message,
+        stack: err instanceof Error ? err.stack : undefined,
+    });
 
     const body: ApiResponse = {
         success: false,
@@ -41,12 +50,20 @@ export const errorHandler = (
  * Handle 404 - Route Not Found
  */
 export const notFoundHandler = (req: Request, res: Response): void => {
+    const requestId = res.getHeader("x-request-id") as string | undefined;
     const body: ApiResponse = {
         success: false,
         statusCode: HTTP_STATUS.NOT_FOUND,
         message: `${req.method} ${req.path} - Route not found`,
         timestamp: new Date().toISOString(),
     };
+
+    logger.warn("Route not found", {
+        requestId,
+        method: req.method,
+        path: req.path,
+    });
+
     res.status(HTTP_STATUS.NOT_FOUND).json(body);
 };
 
@@ -58,7 +75,6 @@ export const handleMongooseValidationError = (err: any): AppError => {
 
     Object.values(err.errors).forEach((error: any) => {
         const field = error.path;
-        // Chỉ lấy error message đầu tiên cho mỗi field
         if (!errors[field]) {
             errors[field] = error.message;
         }
@@ -107,21 +123,13 @@ export const enhancedErrorHandler = (
 ): void => {
     let error = err;
 
-    // Handle Mongoose Validation Error
     if (err.name === "ValidationError") {
         error = handleMongooseValidationError(err);
-    }
-
-    // Handle Mongoose Duplicate Key Error
-    else if (err.code === 11000) {
+    } else if (err.code === 11000) {
         error = handleMongooseDuplicateError(err);
-    }
-
-    // Handle Mongoose Cast Error
-    else if (err.name === "CastError") {
+    } else if (err.name === "CastError") {
         error = handleMongooseCastError(err);
     }
 
-    // Pass to main error handler
     errorHandler(error, req, res, next);
 };

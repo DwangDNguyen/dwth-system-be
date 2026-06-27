@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import axios from "axios";
 import otpGenerator from "otp-generator";
+import logger from "../utils/logger";
 import { User } from "../models/user.model";
 import { generateForgotPasswordMailTemplate } from "../template/mail.template";
 import {
@@ -24,6 +25,7 @@ import {
     TooManyRequestsError,
     ValidationError,
 } from "../utils";
+import { authMailProducer } from "./kafka.mail.producer";
 
 const SALT_ROUNDS = 10;
 const JWT_RESET_SECRET =
@@ -61,19 +63,48 @@ export const sendForgotPasswordOtp = async (email: string): Promise<void> => {
     const otp = generateOTP();
     await setFpOtp(email, otp);
 
+    // ─── Dual delivery: HTTP + Kafka ──────────────────────────────────────────
+    const OTP_EXPIRES_IN = 300; // 5 minutes
     const mailData = {
         email,
         subject: "Reset Your Password – Dwth System",
         body: generateForgotPasswordMailTemplate(otp),
         from: "Admin",
     };
+
+    // ─── Synchronous HTTP delivery (primary) ───────────────────────────────────
     try {
-        await axios.post("http://localhost:5000/api/v1/send-mail", mailData);
-    } catch (mailError: any) {
-        console.warn(
-            "⚠ Mail service unavailable, FP OTP not sent:",
-            mailError?.code ?? mailError?.message,
-        );
+        await axios.post("http://localhost:3002/api/v1/send-mail", mailData, {
+            timeout: 5000,
+        });
+        logger.info("Forgot password OTP sent via HTTP", { email });
+    } catch (httpError: any) {
+        logger.warn("HTTP mail service unavailable, falling back to Kafka", {
+            email,
+            error: httpError?.code ?? httpError?.message,
+        });
+
+        // ─── Asynchronous Kafka delivery (fallback) ───────────────────────────────
+        try {
+            await authMailProducer.sendOtpForgotPassword({
+                email,
+                fullname: user.fullname,
+                otp,
+                expiresIn: OTP_EXPIRES_IN,
+            });
+            logger.info("Forgot password OTP event published to Kafka (fallback)", { email });
+        } catch (kafkaError) {
+            logger.error(
+                "Failed to deliver forgot password OTP via both HTTP and Kafka",
+                {
+                    email,
+                    httpError: httpError?.message,
+                    kafkaError:
+                        kafkaError instanceof Error ? kafkaError.message : String(kafkaError),
+                },
+            );
+            // Continue anyway - OTP is stored in Redis
+        }
     }
 };
 
@@ -146,8 +177,35 @@ export const resetPasswordService = async (
 
     // 4. Hash and update password
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await User.findOneAndUpdate({ email }, { password: hashedPassword });
+    const user = await User.findOneAndUpdate({ email }, { password: hashedPassword });
 
     // 5. Revoke the token (single-use enforcement)
     await deleteFpToken(email);
+
+    // 6. Send password reset confirmation email (Kafka async)
+    if (user) {
+        try {
+            await authMailProducer.sendPasswordResetConfirmation({
+                email,
+                fullname: user.fullname,
+                resetTime: new Date().toLocaleString("en-US", {
+                    timeZone: "UTC",
+                    hour12: true,
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                }),
+            });
+            logger.info("Password reset confirmation email queued to Kafka", { email });
+        } catch (kafkaError) {
+            logger.warn("Failed to queue password reset confirmation email to Kafka", {
+                email,
+                error: kafkaError instanceof Error ? kafkaError.message : String(kafkaError),
+            });
+            // Continue anyway - password has been reset successfully
+        }
+    }
 };

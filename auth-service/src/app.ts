@@ -4,6 +4,7 @@ import {
     enhancedErrorHandler,
     notFoundHandler,
 } from "./middlewares/error.middleware";
+import { requestLoggingMiddleware } from "./middlewares/logging.middleware";
 import authRoutes from "./routes/auth.routes";
 
 const app = express();
@@ -11,12 +12,11 @@ const app = express();
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(cookieParser());
 
-// Routes
-// Note: API Gateway proxies /api/v1/auth to http://localhost:3001
-// So auth service receives requests without the /api/v1/auth prefix
+// Request logging middleware must be early to capture requestId
+app.use(requestLoggingMiddleware);
+
 app.use("/", authRoutes);
 
 // 404 Handler - Must be after all routes
