@@ -25,7 +25,7 @@ import {
     TooManyRequestsError,
     ValidationError,
 } from "../utils";
-import { authMailProducer } from "./kafka.mail.producer";
+import { authMailProducer } from "../producers/mail.producer";
 
 const SALT_ROUNDS = 10;
 const JWT_RESET_SECRET =

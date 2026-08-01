@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { Role, User } from "../models/user.model";
+import { authUserProducer } from "../producers/user.producer";
+import logger from "../utils/logger";
 import {
     OtpExpiredError,
     OtpInvalidError,
@@ -22,10 +24,9 @@ import {
     deleteLoginAttempts,
 } from "./otp.cache";
 
-// ─── JWT Config ───────────────────────────────────────────────────────────────
-const JWT_ACCESS_SECRET =
+const getJwtAccessSecret = () =>
     process.env.JWT_ACCESS_SECRET || "dwth_access_secret_change_in_production";
-const JWT_REFRESH_SECRET =
+const getJwtRefreshSecret = () =>
     process.env.JWT_REFRESH_SECRET ||
     "dwth_refresh_secret_change_in_production";
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
@@ -46,7 +47,7 @@ export interface ITokenPayload {
 
 const generateAccessToken = (payload: Omit<ITokenPayload, "jti">): string => {
     const jti = crypto.randomBytes(8).toString("hex");
-    return jwt.sign({ ...payload, jti }, JWT_ACCESS_SECRET, {
+    return jwt.sign({ ...payload, jti }, getJwtAccessSecret(), {
         expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
 };
@@ -55,7 +56,7 @@ const generateRefreshToken = (
     userId: string,
 ): { token: string; jti: string } => {
     const jti = crypto.randomBytes(16).toString("hex");
-    const token = jwt.sign({ userId, jti }, JWT_REFRESH_SECRET, {
+    const token = jwt.sign({ userId, jti }, getJwtRefreshSecret(), {
         expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     });
     return { token, jti };
@@ -100,6 +101,21 @@ export const verifyOtpService = async (data: IVerifyOtpData) => {
         password: pendingUser.hashedPassword,
         role: pendingUser.role,
     });
+
+    // Publish event "user.created" to Kafka
+    try {
+        await authUserProducer.publishUserCreated({
+            authUserId: newUser._id.toString(),
+            fullname: newUser.fullname,
+            email: newUser.email,
+            role: newUser.role,
+        });
+    } catch (kafkaError) {
+        logger.error("Failed to publish user created event to Kafka", {
+            userId: newUser._id.toString(),
+            error: kafkaError instanceof Error ? kafkaError.message : String(kafkaError),
+        });
+    }
 
     // 5. Cleanup Redis
     await Promise.all([deleteOtp(email), deletePendingUser(email)]);
@@ -177,7 +193,7 @@ export const refreshTokenService = async (refreshToken: string) => {
     // 1. Verify JWT signature + expiry
     let payload: { userId: string; jti: string };
     try {
-        payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as {
+        payload = jwt.verify(refreshToken, getJwtRefreshSecret()) as {
             userId: string;
             jti: string;
         };

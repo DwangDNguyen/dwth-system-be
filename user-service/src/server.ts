@@ -2,6 +2,7 @@ import app from "./app";
 import dotenv from "dotenv";
 import logger from "./utils/logger";
 import { dbConnect } from "./config/db.config";
+import { startUserConsumer, disconnectUserConsumer } from "./config/kafka.config";
 import mongoose from "mongoose";
 
 dotenv.config();
@@ -17,6 +18,14 @@ async function startServer(): Promise<void> {
         app.listen(PORT, () => {
             logger.info(`User service is running at port ${PORT}`);
         });
+
+        // Start Kafka consumer in background
+        startUserConsumer().catch((error) => {
+            logger.error("User consumer error", {
+                error: error instanceof Error ? error.message : String(error),
+            });
+        });
+        logger.info("User service started with Kafka consumer");
     } catch (error) {
         logger.error("Failed to start user service", {
             error: error instanceof Error ? error.message : String(error),
@@ -30,6 +39,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info(`Received ${signal}, starting graceful shutdown...`);
 
     try {
+        await disconnectUserConsumer();
         await mongoose.disconnect();
         logger.info("MongoDB connection closed successfully");
         process.exit(0);

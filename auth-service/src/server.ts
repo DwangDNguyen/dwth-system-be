@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 import logger from "./utils/logger";
 import { dbConnect } from "./config/db.config";
 import { redisConnect } from "./config/redis.config";
-import { authMailProducer } from "./services/kafka.mail.producer";
+import { authMailProducer } from "./producers/mail.producer";
+import { authUserProducer } from "./producers/user.producer";
 import { disconnectKafkaProducer } from "./config/kafka.config";
 
 dotenv.config();
@@ -21,6 +22,10 @@ async function startServer(): Promise<void> {
         // Initialize Kafka producer
         await authMailProducer.initialize();
         logger.info("Kafka mail producer initialized");
+
+        // Initialize User Kafka producer
+        await authUserProducer.initialize();
+        logger.info("Kafka user producer initialized");
 
         // Start Express server
         app.listen(PORT, () => {

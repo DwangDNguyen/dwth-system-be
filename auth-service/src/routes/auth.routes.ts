@@ -6,6 +6,7 @@ import {
     verifyFpOtp,
     resetPassword,
     login,
+    googleLogin,
     refreshToken,
     logout,
 } from "../controllers/auth.controller";
@@ -19,6 +20,7 @@ router.post("/verify-otp", verifyOtp);
 
 // ─── Authentication ───────────────────────────────────────────────────────────
 router.post("/login", login);
+router.post("/google", googleLogin);
 router.post("/refresh-token", refreshToken);
 router.post("/logout", authenticate, logout); // authenticate: cần Access Token
 

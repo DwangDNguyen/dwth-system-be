@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import proxy from "express-http-proxy";
 import cookieParser from "cookie-parser";
 import { authenticate } from "./middlewares/authenticate.middleware";
@@ -12,18 +14,12 @@ import {
 } from "./middlewares/error.middleware";
 import logger from "./utils/logger";
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ALLOWED_ORIGINS = (
     process.env.ALLOWED_ORIGINS || "http://localhost:5173"
 ).split(",");
-
-app.use(cookieParser());
-app.use(requestLoggingMiddleware);
-app.use("/api/v1", authenticate);
 
 app.use(
     cors({
@@ -45,9 +41,13 @@ app.use(
     }),
 );
 
+app.use(cookieParser());
+app.use(requestLoggingMiddleware);
+app.use("/api/v1", authenticate);
+
 app.use(
     "/api/v1/auth",
-    proxy("http://localhost:3001", {
+    proxy(process.env.AUTH_SERVICE_URL || "http://localhost:3001", {
         proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
             if (srcReq.headers && srcReq.headers.authorization) {
                 proxyReqOpts.headers = proxyReqOpts.headers || {};
@@ -76,6 +76,45 @@ app.use(
             proxyErrorHandler(err, res, next);
         },
     }),
+);
+
+app.use(
+    "/api/v1/users",
+    proxy(process.env.USER_SERVICE_URL || "http://localhost:6000", {
+        proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+            if (srcReq.headers && srcReq.headers.authorization) {
+                proxyReqOpts.headers = proxyReqOpts.headers || {};
+                proxyReqOpts.headers["authorization"] = String(
+                    srcReq.headers.authorization,
+                );
+            }
+
+            const anyReq: any = srcReq;
+            if (anyReq.user) {
+                proxyReqOpts.headers = proxyReqOpts.headers || {};
+                proxyReqOpts.headers["x-user-id"] = anyReq.user.userId;
+                proxyReqOpts.headers["x-user-email"] = anyReq.user.email;
+                proxyReqOpts.headers["x-user-role"] = anyReq.user.role;
+            }
+
+            const requestId =
+                (srcReq.headers["x-request-id"] as string) ||
+                `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+            proxyReqOpts.headers = proxyReqOpts.headers || {};
+            proxyReqOpts.headers["x-request-id"] = requestId;
+
+            return proxyReqOpts;
+        },
+        proxyErrorHandler: (err: any, res: Response, next: NextFunction) => {
+            proxyErrorHandler(err, res, next);
+        },
+    }),
+);
+
+// Proxy static uploaded files to user-service
+app.use(
+    "/uploads",
+    proxy(process.env.USER_SERVICE_URL || "http://localhost:6000"),
 );
 
 app.use(notFoundHandler);

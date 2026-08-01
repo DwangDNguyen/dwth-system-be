@@ -9,8 +9,10 @@ export enum Role {
 export interface IUser {
     fullname: string;
     email: string;
-    password: string;
+    password?: string;
     role: Role;
+    googleId?: string;
+    authProvider?: "local" | "google";
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -28,12 +30,22 @@ const userSchema = new mongoose.Schema<IUser>(
         },
         password: {
             type: String,
-            required: [true, "password is required"],
+            required: false,
+            default: "",
         },
         role: {
             type: String,
             enum: Object.values(Role),
             default: Role.USER,
+        },
+        googleId: {
+            type: String,
+            required: false,
+        },
+        authProvider: {
+            type: String,
+            enum: ["local", "google"],
+            default: "local",
         },
     },
     {

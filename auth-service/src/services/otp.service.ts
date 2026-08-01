@@ -7,7 +7,7 @@ import { User } from "../models/user.model";
 import { generateOtpMailTemplate } from "../template/mail.template";
 import { setOtp, setPendingUser, IPendingUser } from "./otp.cache";
 import { IUserData } from "./auth.service";
-import { authMailProducer } from "./kafka.mail.producer";
+import { authMailProducer } from "../producers/mail.producer";
 
 const SALT_ROUNDS = 10;
 

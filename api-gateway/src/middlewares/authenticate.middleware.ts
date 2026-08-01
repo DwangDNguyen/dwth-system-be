@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-const JWT_ACCESS_SECRET =
-    process.env.JWT_ACCESS_SECRET || "dwth_access_secret_change_in_production";
+
 
 const PUBLIC_PATHS = new Set([
     "/api/v1/auth/login",
+    "/api/v1/auth/google",
     "/api/v1/auth/refresh-token",
     "/api/v1/auth/register",
     "/api/v1/auth/verify-otp",
@@ -43,8 +43,11 @@ export const authenticate = (
     }
 
     const token = authHeader.split(" ")[1];
+    const secret =
+        process.env.JWT_ACCESS_SECRET || "dwth_access_secret_change_in_production";
+
     try {
-        const payload = jwt.verify(token, JWT_ACCESS_SECRET) as JwtPayload & {
+        const payload = jwt.verify(token, secret) as JwtPayload & {
             userId?: string;
             email?: string;
             role?: string;

@@ -8,6 +8,7 @@ import {
     refreshTokenService,
     logoutService,
 } from "../services/auth.service";
+import { googleLoginService } from "../services/googleAuth.service";
 import {
     sendForgotPasswordOtp,
     verifyForgotPasswordOtp,
@@ -65,7 +66,7 @@ export const register = async (
             throw new ValidationError("Validation failed", validationErrors);
         }
 
-        await sendOtp({ fullname, email, password, role });
+        await sendOtp({ fullname, email, password: password!, role });
 
         ResponseHelper.created(res, null, "OTP sent to your email");
     } catch (error) {
@@ -234,6 +235,43 @@ export const login = async (
             res,
             { accessToken: result.accessToken, user: result.user },
             "Login successful",
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Google OAuth Login
+ * @route POST /api/auth/google
+ */
+export const googleLogin = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const token =
+            req.body.idToken ||
+            req.body.token ||
+            req.body.accessToken ||
+            req.body.credential;
+
+        if (!token) {
+            throw new ValidationError("Validation failed", {
+                token: "Google Token is required",
+            });
+        }
+
+        const result = await googleLoginService(token);
+
+        // Đặt Refresh Token vào HttpOnly Cookie
+        res.cookie(REFRESH_TOKEN_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+
+        ResponseHelper.ok(
+            res,
+            { accessToken: result.accessToken, user: result.user },
+            "Google Authentication successful",
         );
     } catch (error) {
         next(error);

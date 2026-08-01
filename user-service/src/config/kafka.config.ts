@@ -1,25 +1,25 @@
 /**
- * Kafka consumer configuration for mail-service
- * Connects to kafka-service's mail events topic
+ * Kafka consumer configuration for user-service
+ * Connects to user events topic and consumes user creation events
  */
 
 import { Consumer, logLevel } from "kafkajs";
 import { Kafka } from "kafkajs";
 import dotenv from "dotenv";
 import logger from "../utils/logger";
-import { handleMailMessage } from "../consumers/mail.consumer";
+import { handleUserMessage } from "../consumers/user.consumer";
 
 dotenv.config();
 
 const KAFKA_BROKER = process.env.KAFKA_BROKER || "localhost:9092";
-const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || "mail-service";
+const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || "user-service";
 const KAFKA_LOG_LEVEL = process.env.KAFKA_LOG_LEVEL || "info";
 const KAFKA_SASL_USERNAME = process.env.KAFKA_SASL_USERNAME || "";
 const KAFKA_SASL_PASSWORD = process.env.KAFKA_SASL_PASSWORD || "";
-const KAFKA_SASL_MECHANISM = process.env.KAFKA_SASL_MECHANISM || "scram-sha-256";
+const KAFKA_SASL_MECHANISM = process.env.KAFKA_SASL_MECHANISM || "plain";
 const KAFKA_SSL = process.env.KAFKA_SSL === "true";
-const MAIL_TOPIC = process.env.MAIL_TOPIC || "mail-events";
-const MAIL_CONSUMER_GROUP = process.env.MAIL_CONSUMER_GROUP || "mail-service-group";
+const USER_TOPIC = process.env.USER_TOPIC || "user-events";
+const USER_CONSUMER_GROUP = process.env.USER_CONSUMER_GROUP || "user-service-group";
 
 // ─── Kafka Consumer Singleton ─────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ const getKafkaInstance = (): Kafka => {
             },
         });
 
-        logger.info("Kafka client initialized", {
+        logger.info("Kafka client initialized for User Service", {
             broker: KAFKA_BROKER,
             clientId: KAFKA_CLIENT_ID,
             saslEnabled: !!(KAFKA_SASL_USERNAME && KAFKA_SASL_PASSWORD),
@@ -70,42 +70,42 @@ const getKafkaConsumer = async (): Promise<Consumer> => {
     if (!consumerInstance) {
         const kafka = getKafkaInstance();
         consumerInstance = kafka.consumer({
-            groupId: MAIL_CONSUMER_GROUP,
+            groupId: USER_CONSUMER_GROUP,
             sessionTimeout: 30000,
             heartbeatInterval: 3000,
         });
         await consumerInstance.connect();
-        logger.info("Kafka consumer connected", {
-            groupId: MAIL_CONSUMER_GROUP,
-            topic: MAIL_TOPIC,
+        logger.info("Kafka user consumer connected", {
+            groupId: USER_CONSUMER_GROUP,
+            topic: USER_TOPIC,
         });
     }
     return consumerInstance;
 };
 
 /**
- * Start consuming mail events
+ * Start consuming user events
  */
-export async function startMailConsumer(): Promise<void> {
+export async function startUserConsumer(): Promise<void> {
     try {
         const consumer = await getKafkaConsumer();
 
         await consumer.subscribe({
-            topic: MAIL_TOPIC,
+            topic: USER_TOPIC,
             fromBeginning: false,
         });
 
-        logger.info("Mail consumer subscribed to topic", {
-            topic: MAIL_TOPIC,
-            groupId: MAIL_CONSUMER_GROUP,
+        logger.info("User consumer subscribed to topic", {
+            topic: USER_TOPIC,
+            groupId: USER_CONSUMER_GROUP,
         });
 
         await consumer.run({
-            partitionsConsumedConcurrently: 3,
-            eachMessage: handleMailMessage,
+            partitionsConsumedConcurrently: 1,
+            eachMessage: handleUserMessage,
         });
     } catch (error) {
-        logger.error("Failed to start mail consumer", {
+        logger.error("Failed to start user consumer", {
             error: error instanceof Error ? error.message : String(error),
         });
         throw error;
@@ -115,16 +115,16 @@ export async function startMailConsumer(): Promise<void> {
 /**
  * Disconnect Kafka consumer
  */
-export async function disconnectMailConsumer(): Promise<void> {
+export async function disconnectUserConsumer(): Promise<void> {
     try {
         if (consumerInstance) {
             await consumerInstance.disconnect();
-            logger.info("Mail consumer disconnected");
+            logger.info("User consumer disconnected");
             consumerInstance = null;
         }
         kafkaInstance = null;
     } catch (error) {
-        logger.error("Error disconnecting mail consumer", {
+        logger.error("Error disconnecting user consumer", {
             error: error instanceof Error ? error.message : String(error),
         });
     }
