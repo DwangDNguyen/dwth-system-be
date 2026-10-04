@@ -1,7 +1,7 @@
 export interface IUser {
   fullName: string;
   email: string;
-  role: "User" | "Admin" | "Worker";
+  role: "client" | "freelancer" | "agency" | "admin";
   phone: string;
   avatar: string;
   authUserId: string;

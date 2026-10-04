@@ -7,6 +7,8 @@ import {
 import { requestLoggingMiddleware } from "./middlewares/logging.middleware";
 import authRoutes from "./routes/auth.routes";
 
+import { getHealthStatus } from "./controllers/health.controller";
+
 const app = express();
 
 // Body parser middleware
@@ -16,6 +18,9 @@ app.use(cookieParser());
 
 // Request logging middleware must be early to capture requestId
 app.use(requestLoggingMiddleware);
+
+// Health check endpoint
+app.get("/health", getHealthStatus);
 
 app.use("/", authRoutes);
 

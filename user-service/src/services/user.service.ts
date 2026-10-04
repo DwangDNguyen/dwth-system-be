@@ -41,13 +41,11 @@ export const createUserProfile = async (data: ICreateUserProfile) => {
       return existingProfile;
     }
 
-    // Map auth roles (USER/ADMIN/WORKER) to Mongoose schema roles ("User" | "Admin" | "Worker")
-    let userRole: "User" | "Admin" | "Worker" = "User";
-    const normalizedRole = role ? role.toUpperCase() : "USER";
-    if (normalizedRole === "ADMIN") {
-      userRole = "Admin";
-    } else if (normalizedRole === "WORKER") {
-      userRole = "Worker";
+    // Map auth roles
+    let userRole: "client" | "freelancer" | "agency" | "admin" = "client";
+    const normalizedRole = role ? role.toLowerCase() : "client";
+    if (["client", "freelancer", "agency", "admin"].includes(normalizedRole)) {
+      userRole = normalizedRole as any;
     }
 
     // Create the profile document

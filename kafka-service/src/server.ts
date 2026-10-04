@@ -15,6 +15,8 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 // ─── Initialize Service ───────────────────────────────────────────────────────
 
+import http from "http";
+
 async function startKafkaService(): Promise<void> {
     try {
         logger.info("Starting Kafka Service", {
@@ -30,6 +32,32 @@ async function startKafkaService(): Promise<void> {
                 error: error instanceof Error ? error.message : String(error),
             });
             process.exit(1);
+        });
+
+        // Start a lightweight native HTTP server for health checks
+        const healthServer = http.createServer((req, res) => {
+            if (req.url === "/health" && req.method === "GET") {
+                const memoryUsage = process.memoryUsage();
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({
+                    service: "kafka-service",
+                    status: "UP",
+                    timestamp: new Date().toISOString(),
+                    uptime: process.uptime(),
+                    memory: {
+                        heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+                        heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+                        rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`
+                    }
+                }));
+            } else {
+                res.writeHead(404);
+                res.end();
+            }
+        });
+
+        healthServer.listen(PORT, () => {
+            logger.info(`Kafka Service health check running at port ${PORT}`);
         });
 
         logger.info(`Kafka Service is running`, {

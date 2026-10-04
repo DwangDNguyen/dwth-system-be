@@ -1,13 +1,13 @@
 import path from "path";
-import express, { Request, Response } from "express";
+import express from "express";
 import {
-    enhancedErrorHandler,
-    notFoundHandler,
+  enhancedErrorHandler,
+  notFoundHandler,
 } from "./middlewares/error.middleware";
 import { requestLoggingMiddleware } from "./middlewares/logging.middleware";
-import { ApiResponse } from "./types";
-import { HTTP_STATUS } from "./constants/http-status";
 import userRoutes from "./routes/user.routes";
+import { getHealthStatus } from "./controllers/health.controller";
+import publicRoutes from "./routes/public.routes";
 
 const app = express();
 
@@ -22,17 +22,12 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use(requestLoggingMiddleware);
 
 // Health check endpoint
-app.get("/health", (_req: Request, res: Response) => {
-    const response: ApiResponse = {
-        success: true,
-        statusCode: HTTP_STATUS.OK,
-        message: "User service is healthy",
-        timestamp: new Date().toISOString(),
-    };
-    res.status(HTTP_STATUS.OK).json(response);
-});
+app.get("/health", getHealthStatus);
 
-// Mount User profile REST API routes (supports both gateway proxy and direct service calls)
+// Public routes (no auth required) - Landing page data
+app.use("/api/v1/public", publicRoutes);
+
+// Protected user profile routes
 app.use("/api/v1/users", userRoutes);
 app.use("/", userRoutes);
 

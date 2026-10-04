@@ -29,8 +29,8 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ["User", "Admin", "Worker"],
-    default: "User",
+    enum: ["client", "freelancer", "agency", "admin"],
+    default: "freelancer",
   },
   skills: [
     {
@@ -83,5 +83,9 @@ const userSchema = new mongoose.Schema<IUser>({
     default: "",
   },
 });
+
+// Indexes for highly optimized Landing Page Cron Jobs and fast lookups
+userSchema.index({ role: 1 }); // Optimize count by role
+userSchema.index({ role: 1, isBlocked: 1, averageRating: -1, totalJobsCompleted: -1 }); // Optimize Top Freelancers query
 
 export const User = mongoose.model<IUser>("UserProfile", userSchema);
