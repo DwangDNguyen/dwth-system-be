@@ -131,6 +131,47 @@ app.use(
   }),
 );
 
+app.use(
+  "/api/v1/menus",
+  proxy(process.env.SYSTEM_SERVICE_URL || "http://localhost:6001", {
+    proxyReqPathResolver: (req) => req.originalUrl,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      if (srcReq.headers && srcReq.headers.authorization) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers["authorization"] = String(
+          srcReq.headers.authorization,
+        );
+      }
+
+      const anyReq: any = srcReq;
+      if (anyReq.user) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers["x-user-id"] = anyReq.user.userId;
+        proxyReqOpts.headers["x-user-email"] = anyReq.user.email;
+        proxyReqOpts.headers["x-user-role"] = anyReq.user.role;
+      }
+
+      const requestId =
+        (srcReq.headers["x-request-id"] as string) ||
+        `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+      proxyReqOpts.headers = proxyReqOpts.headers || {};
+      proxyReqOpts.headers["x-request-id"] = requestId;
+
+      return proxyReqOpts;
+    },
+    userResHeaderDecorator: (headers, userReq) => {
+      const origin = userReq.headers.origin;
+      if (origin && ALLOWED_ORIGINS.includes(String(origin))) {
+        headers["access-control-allow-origin"] = String(origin);
+      }
+      return headers;
+    },
+    proxyErrorHandler: (err: any, res: Response, next: NextFunction) => {
+      proxyErrorHandler(err, res, next);
+    },
+  }),
+);
+
 // Proxy static uploaded files to user-service
 app.use(
   "/uploads",
@@ -155,3 +196,5 @@ process.on("uncaughtException", (error) => {
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled rejection", { reason: String(reason) });
 });
+
+export default app;
