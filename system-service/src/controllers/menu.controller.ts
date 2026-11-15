@@ -220,4 +220,29 @@ export class MenuController {
       next(error);
     }
   }
+
+  /**
+   * Admin (Phase 4): Search available preset icons for IconPicker
+   */
+  public static async searchIcons(
+    req: AuthenticatedSystemRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const keyword = (req.query.q as string) || "";
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 60;
+
+      const result = MenuService.searchIcons(keyword, page, limit);
+
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

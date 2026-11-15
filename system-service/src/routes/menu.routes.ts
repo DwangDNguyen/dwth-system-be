@@ -10,6 +10,7 @@ router.get("/my-menu", MenuController.getMyMenu);
 
 // ─── Admin Management Routes ──────────────────────────────────────────────────
 // Only users with role: 'admin' can access these CRUD endpoints
+router.get("/icons/search", requireAdmin, MenuController.searchIcons);
 router.get("/", requireAdmin, MenuController.getAllMenus);
 router.get("/:id", requireAdmin, MenuController.getMenuById);
 router.post("/", requireAdmin, MenuController.createMenu);

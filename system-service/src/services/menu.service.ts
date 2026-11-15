@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { Menu, IMenu, RoleType } from "../models/menu.model";
+import { Menu, IMenu, RoleType, IconType, IconAstNode } from "../models/menu.model";
 import { redisClient } from "../config/redis.config";
+import { resolveIconNodes, searchPresetIcons } from "../utils/icon.helper";
 import logger from "../utils/logger";
 
 export interface MenuItemTreeNode {
@@ -8,6 +9,8 @@ export interface MenuItemTreeNode {
   title: string;
   url: string;
   icon?: string;
+  iconType?: IconType;
+  iconNodes?: IconAstNode[] | null;
   order: number;
   section: "main" | "secondary";
   badge?: string;
@@ -116,11 +119,20 @@ export class MenuService {
     // Pass 1: Initialize nodes in map
     for (const item of flatMenus) {
       const id = item._id.toString();
+
+      // Resolve iconNodes if not yet stored in DB (backward-compatibility fallback)
+      const nodes =
+        item.iconNodes && Array.isArray(item.iconNodes) && item.iconNodes.length > 0
+          ? item.iconNodes
+          : resolveIconNodes(item.icon);
+
       map.set(id, {
         id,
         title: item.title,
         url: item.url,
         icon: item.icon || undefined,
+        iconType: item.iconType || (nodes ? "preset" : "none"),
+        iconNodes: nodes || null,
         order: item.order,
         section: item.section,
         badge: item.badge || undefined,
@@ -243,6 +255,8 @@ export class MenuService {
     title: string;
     url: string;
     icon?: string;
+    iconType?: IconType;
+    iconNodes?: IconAstNode[] | null;
     parentId?: string | null;
     roles: RoleType[];
     order?: number;
@@ -260,8 +274,16 @@ export class MenuService {
       }
     }
 
+    // Automatically resolve SVG AST nodes if iconName is provided
+    let nodes = data.iconNodes;
+    if (!nodes && data.icon) {
+      nodes = resolveIconNodes(data.icon);
+    }
+
     const newMenu = await Menu.create({
       ...data,
+      iconType: data.iconType || (nodes ? "preset" : "none"),
+      iconNodes: nodes || null,
       parentId: data.parentId ? new mongoose.Types.ObjectId(data.parentId) : null,
     });
 
@@ -278,6 +300,8 @@ export class MenuService {
       title: string;
       url: string;
       icon: string;
+      iconType: IconType;
+      iconNodes: IconAstNode[] | null;
       parentId: string | null;
       roles: RoleType[];
       order: number;
@@ -309,6 +333,13 @@ export class MenuService {
       updatePayload.parentId = data.parentId
         ? new mongoose.Types.ObjectId(data.parentId)
         : null;
+    }
+
+    // Re-resolve iconNodes if icon name changed
+    if (data.icon && !data.iconNodes) {
+      const nodes = resolveIconNodes(data.icon);
+      updatePayload.iconNodes = nodes || null;
+      updatePayload.iconType = nodes ? "preset" : "none";
     }
 
     const updated = await Menu.findByIdAndUpdate(id, updatePayload, {
@@ -379,5 +410,12 @@ export class MenuService {
     }
 
     return { success: true, count: bulkOps.length };
+  }
+
+  /**
+   * Admin (Phase 4): Search available preset icons
+   */
+  public static searchIcons(keyword = "", page = 1, limit = 60) {
+    return searchPresetIcons(keyword, page, limit);
   }
 }

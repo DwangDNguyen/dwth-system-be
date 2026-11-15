@@ -2,11 +2,15 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export type RoleType = "client" | "freelancer" | "agency" | "admin";
 export type MenuSection = "main" | "secondary";
+export type IconType = "preset" | "custom_svg" | "none";
+export type IconAstNode = [string, Record<string, string | number>];
 
 export interface IMenu extends Document {
   title: string;
   url: string;
-  icon?: string;
+  icon?: string;                     // Original icon identifier e.g. "LayoutDashboard"
+  iconType: IconType;                // "preset" | "custom_svg" | "none"
+  iconNodes?: IconAstNode[] | null;  // Headless SVG AST nodes [ [tag, attrs], ... ]
   parentId?: mongoose.Types.ObjectId | null;
   roles: RoleType[];
   order: number;
@@ -33,6 +37,15 @@ const menuSchema = new Schema<IMenu>(
       type: String,
       trim: true,
       default: "",
+    },
+    iconType: {
+      type: String,
+      enum: ["preset", "custom_svg", "none"],
+      default: "preset",
+    },
+    iconNodes: {
+      type: Schema.Types.Mixed,
+      default: null,
     },
     parentId: {
       type: Schema.Types.ObjectId,

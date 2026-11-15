@@ -9,7 +9,12 @@
     "dev": "nodemon ./src/server.ts",
     "seed:menu": "ts-node ./src/seeders/menu.seeder.ts"
   },
-  "keywords": ["system", "rbac", "menu", "microservices"],
+  "keywords": [
+    "system",
+    "rbac",
+    "menu",
+    "microservices"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -19,6 +24,7 @@
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
     "jsonwebtoken": "^9.0.2",
+    "lucide": "^1.66.0",
     "mongoose": "^8.9.5",
     "winston": "^3.11.0"
   },
